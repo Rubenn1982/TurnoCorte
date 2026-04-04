@@ -695,23 +695,22 @@ textarea.fi{resize:vertical;min-height:80px}
     <div class="card">
       <div id="emp-list"></div>
       <hr style="border:none;border-top:1px solid var(--bg3);margin:14px 0">
-      <h3>Agregar</h3>
-      <!-- Avatar preview con foto -->
+      <h3>Agregar profesional</h3>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div id="emp-avatar-prev" onclick="document.getElementById('emp-foto-file').click()"
-          style="width:56px;height:56px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;color:#fff;overflow:hidden;flex-shrink:0;border:2px dashed var(--bg3)">+</div>
-        <input type="file" id="emp-foto-file" accept="image/*" style="display:none" onchange="previewEmpFoto(this)">
-        <div style="font-size:12px;color:var(--ink3)">Foto <span style="opacity:.7">(opcional)</span></div>
+        <div id="emp-avatar-prev" onclick="document.getElementById('emp-foto-inp').click()"
+          style="width:54px;height:54px;border-radius:50%;background:#f59e0b;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;color:#fff;overflow:hidden;flex-shrink:0;border:2px dashed var(--bg3)">+</div>
+        <input type="file" id="emp-foto-inp" accept="image/*" style="display:none" onchange="prevEmpFoto(this)">
+        <span style="font-size:12px;color:var(--ink3)">Foto opcional — tocá para subir</span>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input class="fi" id="emp-nombre-inp" type="text" placeholder="Ej: Julián, Ana..." style="flex:1">
-        <input type="color" id="emp-color-inp" value="#f59e0b" title="Color identificador"
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input class="fi" id="emp-nombre-inp" type="text" placeholder="Ej: Julián, Ana..." style="flex:1;min-width:120px">
+        <input type="color" id="emp-color-inp" value="#f59e0b" title="Color"
           style="width:42px;height:42px;border-radius:8px;border:1px solid var(--bg3);cursor:pointer;padding:2px;flex-shrink:0"
-          onchange="const av=document.getElementById('emp-avatar-prev');if(av&&!av.querySelector('img')){av.style.background=this.value;av.style.color=empContrastColor(this.value);}">
+          onchange="const a=document.getElementById('emp-avatar-prev');if(a&&!a.querySelector('img')){a.style.background=this.value;}">
         <button class="btn btn-p btn-sm" style="width:auto" onclick="addEmpleado()">+ Agregar</button>
       </div>
     </div>
-    <div class="tip">💡 El cliente puede elegir con quién atenderse. Cada uno tiene sus propios horarios.</div>
+    <div class="tip">💡 Cada profesional tiene sus propios horarios. El cliente elige con quién atenderse.</div>
   </div>
 
   <!-- CLIENTES -->
@@ -958,24 +957,10 @@ let chartRec=null,chartSvcs=null;
 
 // ═══ INIT ═══
 async function init(){
-  // Advertir si se abre el archivo local (no desde Vercel)
-  if(window.location.protocol==='file:'){
-    document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;text-align:center;padding:40px;background:#0f0e0d;color:#fff">
-      <div>
-        <div style="font-size:52px;margin-bottom:16px">⚠️</div>
-        <h2 style="font-size:22px;margin-bottom:12px;color:#f59e0b">No abras el archivo directamente</h2>
-        <p style="color:#9a9794;line-height:1.7;max-width:400px">
-          Para que la app funcione tenés que subirla a GitHub y abrirla desde<br>
-          <strong style="color:#fff">turno-corte.vercel.app</strong><br><br>
-          Abrirla como archivo local no puede conectarse a Supabase.
-        </p>
-      </div>
-    </div>`;
-    return;
-  }
   const p=new URLSearchParams(window.location.search).get('p');
   if(p){await loadPublicView(p);return;}
   clearF();
+  // Siempre mostrar login — nunca auto-login
   await sb.auth.signOut();
   document.getElementById('auth-screen').style.display='flex';
 }
@@ -1349,7 +1334,6 @@ async function selDia(k){
   TOMADOS=[];
   if(slug){
     let query=sb.from('turnos').select('hora,servicio,empleado_id').eq('peluqueria_slug',slug).eq('fecha',k).neq('estado','liberado');
-    // Si eligió un empleado específico, filtrar solo sus turnos
     if(CL_EMPLEADO)query=query.eq('empleado_id',CL_EMPLEADO);
     const {data}=await query;
     if(data){
@@ -1391,20 +1375,18 @@ function getTotalMinutos(){
 function getHorasDisponibles(k){
   const diasemana=k?new Date(k.split('/').reverse().join('-')).getDay():1;
   let desde,hasta;
-  // Si hay profesional seleccionado, usar sus horarios propios
   if(CL_EMPLEADO){
     const emp=EMPLEADOS.find(e=>e.id===CL_EMPLEADO);
     const eh=emp?.horarios&&emp.horarios[diasemana];
-    if(eh&&eh.activo===false)return []; // día libre para este profesional
-    desde=eh?.desde||'09:00';
-    hasta=eh?.hasta||'18:00';
-  } else {
+    if(eh&&eh.activo===false)return[];
+    desde=eh?.desde||'09:00';hasta=eh?.hasta||'18:00';
+  }else{
     const h=S.horarios_detalle&&S.horarios_detalle[diasemana];
-    desde=h?h.desde:'09:00';
-    hasta=h?h.hasta:'18:00';
+    desde=h?h.desde:'09:00';hasta=h?h.hasta:'18:00';
   }
   const [fh,fm]=hasta.split(':').map(Number);
   const finMin=fh*60+fm;
+  // Generar slots cada 30 minutos fijos (no por duración del servicio)
   const slots=[];
   let [hh,mm]=desde.split(':').map(Number);
   while(true){
@@ -1413,6 +1395,7 @@ function getHorasDisponibles(k){
     slots.push(`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`);
     mm+=30;hh+=Math.floor(mm/60);mm=mm%60;
   }
+  // Filtrar horarios bloqueados manualmente por el peluquero
   const bloq=S.horarios_bloqueados||{};
   const bloqHoy=bloq[k]||[];
   return slots.filter(s=>!bloqHoy.includes(s));
@@ -1422,16 +1405,12 @@ function renderTimes(k){
   const totalNuevo=getTotalMinutos();
   const diasemana=(k||CL.dia)?new Date((k||CL.dia).split('/').reverse().join('-')).getDay():1;
   let hasta;
-  if(CL_EMPLEADO){
-    const emp=EMPLEADOS.find(e=>e.id===CL_EMPLEADO);
-    hasta=emp?.horarios?.[diasemana]?.hasta||'18:00';
-  } else {
-    const hd=S.horarios_detalle&&S.horarios_detalle[diasemana];
-    hasta=hd?hd.hasta:'18:00';
-  }
+  if(CL_EMPLEADO){const emp=EMPLEADOS.find(e=>e.id===CL_EMPLEADO);hasta=emp?.horarios?.[diasemana]?.hasta||'18:00';}
+  else{const hd=S.horarios_detalle&&S.horarios_detalle[diasemana];hasta=hd?hd.hasta:'18:00';}
   const [fh,fm]=hasta.split(':').map(Number);
   const finMin=fh*60+fm;
   const horas=getHorasDisponibles(k||CL.dia);
+  // Solo mostrar slots donde el turno nuevo entra antes del cierre
   const horasValidas=horas.filter(h=>{
     const [hh,hm]=h.split(':').map(Number);
     return hh*60+hm+totalNuevo<=finMin;
@@ -1515,114 +1494,81 @@ function mandarAvisoEfectivo(){
 function clReset(){CL={svcs:[],dia:null,hora:null,nombre:'',tel:''};CL_EMPLEADO=null;PAGOSEL='t';selPago('t');document.getElementById('cl-nombre-inp').value='';document.getElementById('cl-tel').value='';const ts=document.getElementById('times-section');if(ts)ts.style.display='none';renderSvcsC();renderEmpPillsC();clNext(1);}
 
 // ═══ EMPLEADOS ═══
-async function cargarEmpleados(){
-  if(!S.slug)return;
-  const {data}=await sb.from('empleados').select('*').eq('peluqueria_slug',S.slug).eq('activo',true).order('created_at');
-  if(data){
-    // Asegurar que cada empleado tiene su propio objeto horarios (no compartido)
-    EMPLEADOS=data.map(e=>({
-      ...e,
-      horarios:e.horarios&&typeof e.horarios==='object'
-        ?JSON.parse(JSON.stringify(e.horarios))
-        :{}
-    }));
-  }
-}
-function renderEmpleados(){
-  const g=document.getElementById('emp-list');if(!g)return;
-  if(!EMPLEADOS.length){
-    g.innerHTML=`<p style="font-size:13px;color:var(--ink3);margin-bottom:8px">No hay profesionales aún.</p>`;
-    return;
-  }
-  const dias={0:'Dom',1:'Lun',2:'Mar',3:'Mié',4:'Jue',5:'Vie',6:'Sáb'};
-  const diasTrabajo=S.dias_trabajo||[1,2,3,4,5,6];
-  g.innerHTML=EMPLEADOS.map(e=>{
-    const color=e.color||'#f59e0b';
-    const txtColor=empContrastColor(color);
-    const avatarInner=e.foto_url
-      ?`<img src="${e.foto_url}" alt="" style="width:100%;height:100%;object-fit:cover">`
-      :`<span style="color:${txtColor};font-weight:700;font-size:20px">${e.nombre.charAt(0).toUpperCase()}</span>`;
-    const turnosHoy=TURNOS.filter(t=>t.empleado_id===e.id&&t.fecha===new Date().toLocaleDateString('es-AR')).length;
-    const horarios=e.horarios||{};
-    const horariosHtml=diasTrabajo.length?diasTrabajo.map(d=>{
-      const h=horarios[d]||{activo:true,desde:'09:00',hasta:'18:00'};
-      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;min-width:52px">
-          <input type="checkbox" ${h.activo!==false?'checked':''} style="accent-color:var(--accent)"
-            onchange="setEmpHorario('${e.id}',${d},'activo',this.checked)">
-          <span style="font-size:12px;font-weight:600;color:var(--ink)">${dias[d]}</span>
-        </label>
-        <select class="fi" style="width:auto;padding:4px 8px;font-size:12px" ${h.activo===false?'disabled':''}
-          onchange="setEmpHorario('${e.id}',${d},'desde',this.value)">
-          ${HORAS_SELECT.map(t=>`<option ${t===(h.desde||'09:00')?'selected':''}>${t}</option>`).join('')}
-        </select>
-        <span style="font-size:11px;color:var(--ink3)">→</span>
-        <select class="fi" style="width:auto;padding:4px 8px;font-size:12px" ${h.activo===false?'disabled':''}
-          onchange="setEmpHorario('${e.id}',${d},'hasta',this.value)">
-          ${HORAS_SELECT.map(t=>`<option ${t===(h.hasta||'18:00')?'selected':''}>${t}</option>`).join('')}
-        </select>
-      </div>`;
-    }).join(''):'<p style="font-size:12px;color:var(--ink3)">Configurá días en Mi peluquería primero</p>';
-    return `<div style="background:var(--surface);border:1.5px solid var(--bg3);border-radius:var(--r);padding:14px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="width:52px;height:52px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarInner}</div>
-        <div style="flex:1">
-          <div style="font-weight:600;font-size:15px;color:var(--ink)">${e.nombre}</div>
-          <div style="font-size:12px;color:var(--ink3)">${turnosHoy} turno${turnosHoy!==1?'s':''} hoy</div>
-        </div>
-        <button class="emp-del" onclick="deleteEmpleado('${e.id}')">×</button>
-      </div>
-      <div style="background:var(--bg2);border-radius:var(--r);padding:10px">
-        <div style="font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;margin-bottom:8px">Horarios</div>
-        ${horariosHtml}
-        <button class="btn btn-g btn-sm" style="width:auto;margin-top:8px" onclick="guardarHorariosEmp('${e.id}')">💾 Guardar horarios</button>
-      </div>
-    </div>`;
-  }).join('');
-  renderEmpPillsC();
-}
-function setEmpHorario(empId,dia,campo,valor){
-  // Buscar empleado y asegurar que horarios sea un objeto propio (no referencia compartida)
-  const emp=EMPLEADOS.find(e=>e.id===empId);if(!emp)return;
-  if(!emp.horarios||typeof emp.horarios!=='object')emp.horarios={};
-  if(!emp.horarios[dia])emp.horarios[dia]={activo:true,desde:'09:00',hasta:'18:00'};
-  // Clonar para evitar referencias compartidas entre empleados
-  emp.horarios=JSON.parse(JSON.stringify(emp.horarios));
-  emp.horarios[dia][campo]=valor;
-  if(campo==='activo')renderEmpleados();
-}
-async function guardarHorariosEmp(empId){
-  const emp=EMPLEADOS.find(e=>e.id===empId);if(!emp)return;
-  const btn=event.target;
-  const orig=btn.textContent;
-  btn.textContent='Guardando...';btn.disabled=true;
-  try{
-    const horarios=emp.horarios&&typeof emp.horarios==='object'?emp.horarios:{};
-    const {error}=await sb.from('empleados').update({horarios}).eq('id',empId);
-    if(error){alert('Error al guardar: '+error.message);btn.textContent=orig;btn.disabled=false;return;}
-    btn.textContent='✓ Guardado';btn.style.background='var(--ok)';btn.style.color='#fff';
-    setTimeout(()=>{btn.textContent=orig;btn.style.background='';btn.style.color='';btn.disabled=false;},2000);
-  }catch(e){
-    alert('Error de conexión. Asegurate de estar en turno-corte.vercel.app, no en el archivo local.');
-    btn.textContent=orig;btn.disabled=false;
-  }
-}
-// ── helpers avatar empleados ──
 let EMP_FOTO_FILE=null;
-function empContrastColor(hex){
-  if(!hex||hex.length<7)return '#fff';
-  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
-  return (r*299+g*587+b*114)/1000>128?'#0f0e0d':'#ffffff';
-}
-function previewEmpFoto(inp){
+function prevEmpFoto(inp){
   const f=inp.files[0];if(!f)return;
   EMP_FOTO_FILE=f;
   const r=new FileReader();
   r.onload=e=>{
     const av=document.getElementById('emp-avatar-prev');
     if(av)av.innerHTML=`<img src="${e.target.result}" alt="" style="width:100%;height:100%;object-fit:cover">`;
-  };
-  r.readAsDataURL(f);
+  };r.readAsDataURL(f);
+}
+async function cargarEmpleados(){
+  if(!S.slug)return;
+  const {data}=await sb.from('empleados').select('*').eq('peluqueria_slug',S.slug).eq('activo',true).order('created_at');
+  if(data)EMPLEADOS=data.map(e=>({...e,horarios:e.horarios?JSON.parse(JSON.stringify(e.horarios)):{}}));
+}
+function empContrast(hex){try{const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return(r*299+g*587+b*114)/1000>128?'#111':'#fff';}catch{return'#fff';}}
+function renderEmpleados(){
+  const g=document.getElementById('emp-list');if(!g)return;
+  if(!EMPLEADOS.length){g.innerHTML=`<p style="font-size:13px;color:var(--ink3);margin-bottom:8px">No hay profesionales aún.</p>`;return;}
+  const DS={0:'Dom',1:'Lun',2:'Mar',3:'Mié',4:'Jue',5:'Vie',6:'Sáb'};
+  const diasT=S.dias_trabajo||[1,2,3,4,5,6];
+  const HOPTS=[];for(let h=6;h<=22;h++)for(let m=0;m<60;m+=30)HOPTS.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+  g.innerHTML=EMPLEADOS.map(e=>{
+    const col=e.color||'#f59e0b';
+    const txt=empContrast(col);
+    const av=e.foto_url?`<img src="${e.foto_url}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<span style="color:${txt};font-weight:700;font-size:18px">${e.nombre.charAt(0).toUpperCase()}</span>`;
+    const hoy=TURNOS.filter(t=>t.empleado_id===e.id&&t.fecha===new Date().toLocaleDateString('es-AR')).length;
+    const hor=e.horarios||{};
+    const horariosHtml=diasT.length?diasT.map(d=>{
+      const h=hor[d]||{activo:true,desde:'09:00',hasta:'18:00'};
+      const activo=h.activo!==false;
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;min-width:52px">
+          <input type="checkbox" ${activo?'checked':''} style="accent-color:var(--accent)" onchange="setEH('${e.id}',${d},'activo',this.checked)">
+          <span style="font-size:12px;font-weight:600">${DS[d]}</span>
+        </label>
+        <select class="fi" style="width:auto;padding:4px 8px;font-size:12px" ${!activo?'disabled':''} onchange="setEH('${e.id}',${d},'desde',this.value)">
+          ${HOPTS.map(t=>`<option ${t===(h.desde||'09:00')?'selected':''}>${t}</option>`).join('')}
+        </select>
+        <span style="font-size:11px;color:var(--ink3)">→</span>
+        <select class="fi" style="width:auto;padding:4px 8px;font-size:12px" ${!activo?'disabled':''} onchange="setEH('${e.id}',${d},'hasta',this.value)">
+          ${HOPTS.map(t=>`<option ${t===(h.hasta||'18:00')?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>`;
+    }).join(''):`<p style="font-size:12px;color:var(--ink3)">Configurá días en Mi peluquería</p>`;
+    return `<div style="background:var(--surface);border:1.5px solid var(--bg3);border-radius:var(--r);padding:14px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div style="width:52px;height:52px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${av}</div>
+        <div style="flex:1"><div style="font-weight:600;font-size:15px">${e.nombre}</div><div style="font-size:12px;color:var(--ink3)">${hoy} turno${hoy!==1?'s':''} hoy</div></div>
+        <button class="emp-del" onclick="deleteEmpleado('${e.id}')">×</button>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--r);padding:10px">
+        <div style="font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;margin-bottom:8px">Horarios</div>
+        ${horariosHtml}
+        <button class="btn btn-g btn-sm" style="width:auto;margin-top:8px" onclick="saveEH('${e.id}',this)">💾 Guardar horarios</button>
+      </div>
+    </div>`;
+  }).join('');
+  renderEmpPillsC();
+}
+function setEH(empId,dia,campo,valor){
+  const emp=EMPLEADOS.find(e=>e.id===empId);if(!emp)return;
+  emp.horarios=emp.horarios?JSON.parse(JSON.stringify(emp.horarios)):{};
+  if(!emp.horarios[dia])emp.horarios[dia]={activo:true,desde:'09:00',hasta:'18:00'};
+  emp.horarios[dia][campo]=valor;
+  if(campo==='activo')renderEmpleados();
+}
+async function saveEH(empId,btn){
+  const emp=EMPLEADOS.find(e=>e.id===empId);if(!emp)return;
+  const orig=btn.textContent;btn.textContent='Guardando...';btn.disabled=true;
+  const {error}=await sb.from('empleados').update({horarios:emp.horarios||{}}).eq('id',empId);
+  btn.disabled=false;
+  if(error){alert('Error: '+error.message);btn.textContent=orig;return;}
+  btn.textContent='✓ Guardado';btn.style.background='var(--ok)';btn.style.color='#fff';
+  setTimeout(()=>{btn.textContent=orig;btn.style.background='';btn.style.color='';},2000);
 }
 async function addEmpleado(){
   const inp=document.getElementById('emp-nombre-inp');
@@ -1630,27 +1576,25 @@ async function addEmpleado(){
   const nombre=inp?.value.trim();
   if(!nombre){alert('Escribí el nombre');return;}
   if(!S.slug){alert('Guardá los datos de tu peluquería primero');return;}
-  const btn=event.target;btn.disabled=true;btn.textContent='Agregando...';
-  // Subir foto si eligió una
+  const btn=document.querySelector('#ot-empleados .btn-p');
+  if(btn){btn.disabled=true;btn.textContent='Agregando...';}
   let foto_url=null;
   if(EMP_FOTO_FILE&&U){
     const ext=EMP_FOTO_FILE.name.split('.').pop();
     const path=`${U.id}/emp_${Date.now()}.${ext}`;
-    const {error:upErr}=await sb.storage.from('fotos').upload(path,EMP_FOTO_FILE,{upsert:true});
-    if(!upErr){const {data:pu}=sb.storage.from('fotos').getPublicUrl(path);foto_url=pu.publicUrl;}
+    const {error:ue}=await sb.storage.from('fotos').upload(path,EMP_FOTO_FILE,{upsert:true});
+    if(!ue){const {data:pu}=sb.storage.from('fotos').getPublicUrl(path);foto_url=pu.publicUrl;}
   }
-  // Insert sin foto_url si la columna no existe aún
   const payload={peluqueria_slug:S.slug,nombre,color:col?.value||'#f59e0b',activo:true,horarios:{}};
   if(foto_url)payload.foto_url=foto_url;
   const {data,error}=await sb.from('empleados').insert(payload).select().single();
-  btn.disabled=false;btn.textContent='+ Agregar';
+  if(btn){btn.disabled=false;btn.textContent='+ Agregar';}
   if(error){alert('Error: '+error.message);return;}
   if(data){
-    EMPLEADOS.push(data);
-    inp.value='';
-    EMP_FOTO_FILE=null;
+    EMPLEADOS.push({...data,horarios:{}});
+    inp.value='';EMP_FOTO_FILE=null;
     const av=document.getElementById('emp-avatar-prev');
-    if(av){av.innerHTML='+';av.style.background='var(--accent)';}
+    if(av){av.innerHTML='+';av.style.background='#f59e0b';}
     renderEmpleados();
   }
 }
@@ -1667,13 +1611,12 @@ function renderEmpPillsC(){
   if(sec)sec.style.display='block';
   const pills=[{id:null,nombre:'Cualquiera',color:'#9a9794',foto_url:null},...EMPLEADOS];
   g.innerHTML=pills.map(e=>{
-    const color=e.color||'#9a9794';
-    const txtColor=empContrastColor(color);
-    const avatarInner=e.foto_url
+    const col=e.color||'#9a9794';
+    const av=e.foto_url
       ?`<img src="${e.foto_url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-      :`<span style="color:${txtColor};font-weight:700;font-size:13px">${e.nombre.charAt(0).toUpperCase()}</span>`;
+      :`<span style="color:${empContrast(col)};font-weight:700;font-size:12px">${e.nombre.charAt(0).toUpperCase()}</span>`;
     return `<div class="emp-pill ${CL_EMPLEADO===e.id?'sel':''}" onclick="selEmpleado('${e.id}')">
-      <div style="width:26px;height:26px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${avatarInner}</div>
+      <div style="width:26px;height:26px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${av}</div>
       ${e.nombre}
     </div>`;
   }).join('');
@@ -1775,11 +1718,7 @@ let TURNOS_EXPANDIDOS={};
 async function initDash(){
   const df=document.getElementById('dash-fecha');
   if(df)df.textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  // Garantizar slug antes de cargar turnos
-  if(!S.slug&&U){
-    const {data:sd}=await sb.from('peluquerias').select('slug').eq('user_id',U.id).maybeSingle();
-    if(sd?.slug)S.slug=sd.slug;
-  }
+  if(!S.slug&&U){const {data:sd}=await sb.from('peluquerias').select('slug').eq('user_id',U.id).maybeSingle();if(sd?.slug)S.slug=sd.slug;}
   await cargarTurnos();
 }
 async function cargarTurnos(){
@@ -1898,10 +1837,13 @@ function renderTurnoCard(t,isPend){
   return `<div class="turno-card ${cardCls}">
     <div class="turno-row" onclick="toggleCard('${t.id}')">
       <div class="turno-row-left">
-        <div class="turno-hora-sm">${t.hora}</div>
+        <div style="flex-shrink:0;text-align:center">
+          <div class="turno-hora-sm">${t.hora}</div>
+          ${isPend?`<div style="font-size:10px;color:var(--ink3)">${t.fecha}</div>`:''}
+        </div>
         <div style="min-width:0">
           <div class="turno-nombre-sm">${t.cliente_nombre}</div>
-          <div class="turno-svc-sm">${isPend?'📅 '+t.fecha+' · ':''} ${t.servicio}</div>
+          <div class="turno-svc-sm">${t.servicio}${t.empleado_id&&EMPLEADOS.find(e=>e.id===t.empleado_id)?' · 💈'+EMPLEADOS.find(e=>e.id===t.empleado_id).nombre:''}</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
@@ -1911,11 +1853,14 @@ function renderTurnoCard(t,isPend){
     </div>
     <div class="turno-detail ${exp?'open':''}" id="det-${t.id}">
       <div class="turno-detail-grid">
+        <div><div class="td-lbl">Fecha</div><div class="td-val">${t.fecha}</div></div>
+        <div><div class="td-lbl">Hora</div><div class="td-val">${t.hora} hs</div></div>
         <div><div class="td-lbl">Servicio</div><div class="td-val">${t.servicio}</div></div>
         <div><div class="td-lbl">Total</div><div class="td-val">$${(t.precio||0).toLocaleString('es-AR')}</div></div>
+        <div><div class="td-lbl">Cliente</div><div class="td-val">${t.cliente_nombre}</div></div>
         <div><div class="td-lbl">WhatsApp</div><div class="td-val">📱 ${t.cliente_tel}</div></div>
-        <div><div class="td-lbl">Pago</div><div class="td-val">${t.tipo_pago==='t'?'Transferencia':'Efectivo'}</div></div>
-        ${t.empleado_id?`<div><div class="td-lbl">Empleado</div><div class="td-val">${EMPLEADOS.find(e=>e.id===t.empleado_id)?.nombre||'—'}</div></div>`:''}
+        <div><div class="td-lbl">Pago</div><div class="td-val">${t.tipo_pago==='t'?'Transferencia MP':'Efectivo'}</div></div>
+        ${t.empleado_id?`<div><div class="td-lbl">Profesional</div><div class="td-val">💈 ${EMPLEADOS.find(e=>e.id===t.empleado_id)?.nombre||'—'}</div></div>`:''}
       </div>
       ${t.estado==='pendiente'?`<div class="turno-btns"><button class="tbtn tbtn-ok" onclick="confT('${t.id}')">✓ Confirmar</button><button class="tbtn tbtn-lib" onclick="liberarT('${t.id}')">✕ Liberar</button></div>`:''}
       ${(t.estado==='confirmado'||t.estado==='efectivo')?`<div class="turno-btns"><button class="tbtn" style="background:#ede9fe;color:#6d28d9;flex:1" onclick="marcarRealizado('${t.id}')">✓ Marcar realizado</button><button class="tbtn tbtn-lib" onclick="liberarT('${t.id}')">✕ Cancelar</button></div>`:''}
