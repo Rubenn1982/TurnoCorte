@@ -223,6 +223,15 @@ textarea.fi{resize:vertical;min-height:80px}
 .emp-pill:hover{border-color:var(--ink2)}
 .emp-pill.sel{border-color:var(--accent);background:var(--accent-l);color:var(--accent-d)}
 .emp-pill-dot{width:10px;height:10px;border-radius:50%}
+/* STAFF GRID */
+.staff-card{background:var(--surface);border:1px solid var(--bg3);border-radius:var(--rl);overflow:hidden;cursor:pointer;transition:all .2s;position:relative}
+.staff-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.12)}
+.staff-photo{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--bg2)}
+.staff-photo-placeholder{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:700;font-family:'Playfair Display',serif}
+.staff-info{padding:10px 12px}
+.staff-name{font-weight:600;font-size:14px;color:var(--ink);margin-bottom:2px}
+.staff-sub{font-size:11px;color:var(--ink3)}
+.staff-menu-btn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 /* CLIENTES */
 .cl-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--bg3);cursor:pointer;transition:background .15s}
 .cl-row:hover{background:var(--bg2)}
@@ -546,7 +555,7 @@ textarea.fi{resize:vertical;min-height:80px}
     <button class="ctab" onclick="ownerTab('config',this)">Mi peluquería</button>
     <button class="ctab" onclick="ownerTab('svcs',this)">Servicios</button>
     <button class="ctab" onclick="ownerTab('pago',this)">Cobros</button>
-    <button class="ctab" onclick="ownerTab('empleados',this)">Equipo</button>
+    <button class="ctab" onclick="ownerTab('empleados',this)">Staff</button>
     <button class="ctab" onclick="ownerTab('clientes',this)">Clientes</button>
     <button class="ctab" onclick="ownerTab('metricas',this)">Métricas</button>
     <button class="ctab" onclick="ownerTab('tema',this)">Apariencia</button>
@@ -688,32 +697,82 @@ textarea.fi{resize:vertical;min-height:80px}
     </div>
   </div>
 
-  <!-- EMPLEADOS -->
+  <!-- STAFF -->
   <div id="ot-empleados" class="owner-tab" style="display:none">
-    <h1 style="margin-bottom:4px">Equipo</h1>
-    <p class="sub">Profesionales de tu peluquería</p>
-    <div class="card">
-      <div id="emp-list"></div>
-      <hr style="border:none;border-top:1px solid var(--bg3);margin:14px 0">
-      <h3>Agregar profesional</h3>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div id="emp-avatar-prev" onclick="document.getElementById('emp-foto-inp').click()"
-          style="width:54px;height:54px;border-radius:50%;background:#f59e0b;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;color:#fff;overflow:hidden;flex-shrink:0;border:2px dashed var(--bg3)">+</div>
-        <input type="file" id="emp-foto-inp" accept="image/*" style="display:none" onchange="prevEmpFoto(this)">
-        <span style="font-size:12px;color:var(--ink3)">Foto opcional — tocá para subir</span>
+    <h1 style="margin-bottom:4px">Staff</h1>
+    <p class="sub">Los profesionales que ven tus clientes</p>
+
+    <!-- GRID DE PROFESIONALES -->
+    <div id="staff-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px"></div>
+
+    <!-- FORMULARIO AGREGAR -->
+    <div class="card" id="staff-form-card">
+      <h3 style="margin-bottom:14px">+ Agregar profesional</h3>
+      <!-- Foto preview cuadrada -->
+      <div style="display:flex;justify-content:center;margin-bottom:14px">
+        <div id="staff-foto-prev" onclick="document.getElementById('staff-foto-inp').click()"
+          style="width:100px;height:100px;border-radius:12px;background:#f59e0b;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:36px;color:#fff;overflow:hidden;border:3px dashed var(--bg3);position:relative">
+          <span>+</span>
+          <div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.5);border-radius:6px;padding:2px 5px;font-size:10px;color:#fff">foto</div>
+        </div>
+        <input type="file" id="staff-foto-inp" accept="image/*" style="display:none" onchange="prevStaffFoto(this)">
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input class="fi" id="emp-nombre-inp" type="text" placeholder="Ej: Julián, Ana..." style="flex:1;min-width:120px">
-        <input type="color" id="emp-color-inp" value="#f59e0b" title="Color"
-          style="width:42px;height:42px;border-radius:8px;border:1px solid var(--bg3);cursor:pointer;padding:2px;flex-shrink:0"
-          onchange="const a=document.getElementById('emp-avatar-prev');if(a&&!a.querySelector('img')){a.style.background=this.value;}">
-        <button class="btn btn-p btn-sm" style="width:auto" onclick="addEmpleado()">+ Agregar</button>
+      <div class="fg">
+        <label class="fl">Nombre</label>
+        <input class="fi" id="staff-nombre-inp" type="text" placeholder="Ej: Julián, Ana, Carlos...">
       </div>
+      <div class="fg">
+        <label class="fl">Color identificador</label>
+        <input type="color" id="staff-color-inp" value="#f59e0b"
+          style="width:100%;height:40px;border-radius:var(--r);border:1px solid var(--bg3);cursor:pointer;padding:2px"
+          onchange="const p=document.getElementById('staff-foto-prev');if(p&&!p.querySelector('img'))p.style.background=this.value">
+      </div>
+      <button class="btn btn-p" onclick="addStaff()">+ Agregar</button>
     </div>
-    <div class="tip">💡 Cada profesional tiene sus propios horarios. El cliente elige con quién atenderse.</div>
+
+    <div class="tip">💡 El cliente ve la foto y elige con quién atenderse. Cada uno tiene sus propios horarios.</div>
   </div>
 
-  <!-- CLIENTES -->
+  <!-- MODAL EDITAR STAFF -->
+  <div id="staff-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;padding:16px">
+    <div style="background:var(--surface);border-radius:var(--rl);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:24px;position:relative">
+      <button onclick="cerrarStaffModal()" style="position:absolute;top:14px;right:14px;background:var(--bg2);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px;color:var(--ink)">×</button>
+      <h2 id="modal-titulo" style="margin-bottom:16px">Editar profesional</h2>
+
+      <!-- Foto cuadrada editable -->
+      <div style="display:flex;justify-content:center;margin-bottom:16px">
+        <div style="position:relative;width:110px">
+          <div id="modal-foto-prev" style="width:110px;height:110px;border-radius:12px;overflow:hidden;background:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:40px;color:#fff"></div>
+          <button onclick="document.getElementById('modal-foto-inp').click()"
+            style="position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px">📷 Editar</button>
+          <input type="file" id="modal-foto-inp" accept="image/*" style="display:none" onchange="cambiarFotoModal(this)">
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="fl">Nombre</label>
+        <input class="fi" id="modal-nombre" type="text">
+      </div>
+      <div class="fg">
+        <label class="fl">Color</label>
+        <input type="color" id="modal-color" style="width:100%;height:40px;border-radius:var(--r);border:1px solid var(--bg3);cursor:pointer;padding:2px">
+      </div>
+
+      <!-- Horarios -->
+      <div style="background:var(--bg2);border-radius:var(--r);padding:14px;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;margin-bottom:10px">Horarios de trabajo</div>
+        <div id="modal-horarios"></div>
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-p" style="flex:1" onclick="guardarStaffModal()">💾 Guardar</button>
+        <button class="btn btn-g" style="flex:0 0 auto;width:auto;color:var(--err)" onclick="eliminarStaff()">🗑 Eliminar</button>
+      </div>
+      <input type="hidden" id="modal-emp-id">
+    </div>
+  </div>
+
+
   <div id="ot-clientes" class="owner-tab" style="display:none">
     <h1 style="margin-bottom:4px">Clientes</h1>
     <p class="sub">Base de datos de tus clientes</p>
@@ -1123,7 +1182,7 @@ function ownerTab(t,btn){
   if(t==='tema'){renderGrads();renderBGs();applyTA();}
   if(t==='comp')updateShare();
   if(t==='metricas')initMetricas();
-  if(t==='empleados')renderEmpleados();
+  if(t==='empleados'){cargarEmpleados().then(()=>{renderEmpleados();});}
   if(t==='clientes')initClientes();
 }
 
@@ -1493,180 +1552,182 @@ function mandarAvisoEfectivo(){
 }
 function clReset(){CL={svcs:[],dia:null,hora:null,nombre:'',tel:''};CL_EMPLEADO=null;PAGOSEL='t';selPago('t');document.getElementById('cl-nombre-inp').value='';document.getElementById('cl-tel').value='';const ts=document.getElementById('times-section');if(ts)ts.style.display='none';renderSvcsC();renderEmpPillsC();clNext(1);}
 
-// ═══ EMPLEADOS ═══
-let EMP_FOTO_FILE=null;
-function prevEmpFoto(inp){
+// ═══ STAFF ═══
+let STAFF_FOTO_FILE=null;
+let MODAL_EMP_ID=null;
+
+function empContrast(hex){
+  try{const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return(r*299+g*587+b*114)/1000>128?'#111':'#fff';}catch{return'#fff';}
+}
+
+function prevStaffFoto(inp){
   const f=inp.files[0];if(!f)return;
-  EMP_FOTO_FILE=f;
+  STAFF_FOTO_FILE=f;
   const r=new FileReader();
   r.onload=e=>{
-    const av=document.getElementById('emp-avatar-prev');
-    if(av)av.innerHTML=`<img src="${e.target.result}" alt="" style="width:100%;height:100%;object-fit:cover">`;
+    const p=document.getElementById('staff-foto-prev');
+    if(p)p.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">`;
   };r.readAsDataURL(f);
 }
+
 async function cargarEmpleados(){
   if(!S.slug)return;
   const {data}=await sb.from('empleados').select('*').eq('peluqueria_slug',S.slug).eq('activo',true).order('created_at');
-  if(data)EMPLEADOS=data.map(e=>({
-    ...e,
-    foto_url:e.foto_url||null,
-    horarios:e.horarios?JSON.parse(JSON.stringify(e.horarios)):{}
-  }));
+  if(data)EMPLEADOS=data.map(e=>({...e,horarios:e.horarios?JSON.parse(JSON.stringify(e.horarios)):{},foto_url:e.foto_url||null}));
 }
-function empContrast(hex){try{const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return(r*299+g*587+b*114)/1000>128?'#111':'#fff';}catch{return'#fff';}}
+
 function renderEmpleados(){
-  const g=document.getElementById('emp-list');if(!g)return;
-  if(!EMPLEADOS.length){g.innerHTML=`<p style="font-size:13px;color:var(--ink3);margin-bottom:8px">No hay profesionales aún.</p>`;return;}
-  const DS={0:'Dom',1:'Lun',2:'Mar',3:'Mié',4:'Jue',5:'Vie',6:'Sáb'};
-  const diasT=S.dias_trabajo||[1,2,3,4,5,6];
-  const HOPTS=[];for(let h=6;h<=22;h++)for(let m=0;m<60;m+=30)HOPTS.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+  const g=document.getElementById('staff-grid');if(!g)return;
+  if(!EMPLEADOS.length){
+    g.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--ink3);border:2px dashed var(--bg3);border-radius:var(--rl)">Todavía no hay profesionales. Agregá el primero abajo.</div>`;
+    renderEmpPillsC();return;
+  }
   g.innerHTML=EMPLEADOS.map(e=>{
     const col=e.color||'#f59e0b';
     const txt=empContrast(col);
-    const av=e.foto_url
-      ?`<img src="${e.foto_url}?t=${Date.now()}" alt="" style="width:100%;height:100%;object-fit:cover">`
-      :`<span style="color:${txt};font-weight:700;font-size:18px">${e.nombre.charAt(0).toUpperCase()}</span>`;
     const hoy=TURNOS.filter(t=>t.empleado_id===e.id&&t.fecha===new Date().toLocaleDateString('es-AR')).length;
-    const hor=e.horarios||{};
-    const horariosHtml=diasT.length?diasT.map(d=>{
-      const h=hor[d]||{activo:true,desde:'09:00',hasta:'18:00'};
-      const activo=h.activo!==false;
-      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;min-width:52px">
-          <input type="checkbox" ${activo?'checked':''} style="accent-color:var(--accent)" onchange="setEH('${e.id}',${d},'activo',this.checked)">
-          <span style="font-size:12px;font-weight:600">${DS[d]}</span>
-        </label>
-        <select class="fi" style="width:auto;padding:4px 8px;font-size:12px" ${!activo?'disabled':''} onchange="setEH('${e.id}',${d},'desde',this.value)">
-          ${HOPTS.map(t=>`<option ${t===(h.desde||'09:00')?'selected':''}>${t}</option>`).join('')}
-        </select>
-        <span style="font-size:11px;color:var(--ink3)">→</span>
-        <select class="fi" style="width:auto;padding:4px 8px;font-size:12px" ${!activo?'disabled':''} onchange="setEH('${e.id}',${d},'hasta',this.value)">
-          ${HOPTS.map(t=>`<option ${t===(h.hasta||'18:00')?'selected':''}>${t}</option>`).join('')}
-        </select>
-      </div>`;
-    }).join(''):`<p style="font-size:12px;color:var(--ink3)">Configurá días en Mi peluquería</p>`;
-    return `<div style="background:var(--surface);border:1.5px solid var(--bg3);border-radius:var(--r);padding:14px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div id="avatar-${e.id}" style="width:52px;height:52px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${av}</div>
-        <div style="flex:1"><div style="font-weight:600;font-size:15px">${e.nombre}</div><div style="font-size:12px;color:var(--ink3)">${hoy} turno${hoy!==1?'s':''} hoy</div></div>
-        <button class="emp-del" onclick="deleteEmpleado('${e.id}')">×</button>
-      </div>
-      <!-- Editar foto -->
-      <div style="margin-bottom:10px">
-        <label for="foto-inp-${e.id}" class="btn btn-g btn-sm" style="width:auto;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
-          📷 ${e.foto_url?'Cambiar foto':'Agregar foto'}
-        </label>
-        <input type="file" id="foto-inp-${e.id}" accept="image/*" style="display:none" onchange="cambiarFotoEmp('${e.id}',this)">
-      </div>
-      <div style="background:var(--bg2);border-radius:var(--r);padding:10px">
-        <div style="font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;margin-bottom:8px">Horarios</div>
-        ${horariosHtml}
-        <button class="btn btn-g btn-sm" style="width:auto;margin-top:8px" onclick="saveEH('${e.id}',this)">💾 Guardar horarios</button>
+    const fotoHtml=e.foto_url
+      ?`<img src="${e.foto_url}?t=${Date.now()}" class="staff-photo" alt="${e.nombre}">`
+      :`<div class="staff-photo-placeholder" style="background:${col};color:${txt}">${e.nombre.charAt(0).toUpperCase()}</div>`;
+    return `<div class="staff-card" onclick="abrirStaffModal('${e.id}')">
+      ${fotoHtml}
+      <button class="staff-menu-btn" onclick="event.stopPropagation();abrirStaffModal('${e.id}')">⋯</button>
+      <div class="staff-info">
+        <div class="staff-name">${e.nombre}</div>
+        <div class="staff-sub">${hoy} turno${hoy!==1?'s':''} hoy</div>
       </div>
     </div>`;
   }).join('');
   renderEmpPillsC();
 }
-function setEH(empId,dia,campo,valor){
-  const emp=EMPLEADOS.find(e=>e.id===empId);if(!emp)return;
-  emp.horarios=emp.horarios?JSON.parse(JSON.stringify(emp.horarios)):{};
-  if(!emp.horarios[dia])emp.horarios[dia]={activo:true,desde:'09:00',hasta:'18:00'};
-  emp.horarios[dia][campo]=valor;
-  if(campo==='activo')renderEmpleados();
-}
-async function cambiarFotoEmp(empId,inp){
-  const f=inp.files[0];if(!f)return;
-  const emp=EMPLEADOS.find(e=>e.id===empId);if(!emp)return;
-  if(!U){alert('No hay sesión activa');return;}
-  // Mostrar preview inmediato
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const avatar=document.getElementById('avatar-'+empId);
-    if(avatar)avatar.innerHTML=`<img src="${ev.target.result}" alt="" style="width:100%;height:100%;object-fit:cover">`;
-  };
-  reader.readAsDataURL(f);
-  // Cambiar texto del label
-  const lbl=document.querySelector(`label[for="foto-inp-${empId}"]`);
-  if(lbl)lbl.textContent='Subiendo...';
-  // Subir a Storage con ruta fija por empleado
-  const ext=f.name.split('.').pop().toLowerCase().replace('jpeg','jpg');
-  const path=`empleados/${empId}/foto.${ext}`;
-  const {error:ue}=await sb.storage.from('fotos').upload(path,f,{upsert:true,cacheControl:'0'});
-  if(ue){
-    alert('Error subiendo foto: '+ue.message);
-    if(lbl)lbl.textContent='📷 Agregar foto';
-    return;
-  }
-  const {data:pu}=sb.storage.from('fotos').getPublicUrl(path);
-  const urlBase=pu.publicUrl;
-  // Guardar URL en Supabase
-  const {error:de}=await sb.from('empleados').update({foto_url:urlBase}).eq('id',empId);
-  if(de){
-    alert('Error guardando: '+de.message);
-    if(lbl)lbl.textContent='📷 Agregar foto';
-    return;
-  }
-  // Actualizar objeto en memoria
-  emp.foto_url=urlBase;
-  // Actualizar avatar con cache-bust
-  const avatar=document.getElementById('avatar-'+empId);
-  if(avatar)avatar.innerHTML=`<img src="${urlBase}?t=${Date.now()}" alt="" style="width:100%;height:100%;object-fit:cover">`;
-  if(lbl)lbl.textContent='📷 Cambiar foto';
-  alert('✓ Foto guardada');
-}
-async function saveEH(empId,btn){
-  const emp=EMPLEADOS.find(e=>e.id===empId);if(!emp)return;
-  const orig=btn.textContent;btn.textContent='Guardando...';btn.disabled=true;
-  const {error}=await sb.from('empleados').update({horarios:emp.horarios||{}}).eq('id',empId);
-  btn.disabled=false;
-  if(error){alert('Error: '+error.message);btn.textContent=orig;return;}
-  btn.textContent='✓ Guardado';btn.style.background='var(--ok)';btn.style.color='#fff';
-  setTimeout(()=>{btn.textContent=orig;btn.style.background='';btn.style.color='';},2000);
-}
-async function addEmpleado(){
-  const inp=document.getElementById('emp-nombre-inp');
-  const col=document.getElementById('emp-color-inp');
+
+async function addStaff(){
+  const inp=document.getElementById('staff-nombre-inp');
+  const col=document.getElementById('staff-color-inp');
   const nombre=inp?.value.trim();
   if(!nombre){alert('Escribí el nombre');return;}
   if(!S.slug){alert('Guardá los datos de tu peluquería primero');return;}
-  const btn=document.querySelector('#ot-empleados .btn-p');
+  const btn=document.querySelector('#staff-form-card .btn-p');
   if(btn){btn.disabled=true;btn.textContent='Agregando...';}
   let foto_url=null;
-  // Subir foto primero si hay
-  if(EMP_FOTO_FILE&&U){
-    const ext=EMP_FOTO_FILE.name.split('.').pop();
-    const path=`${U.id}/emp_${Date.now()}.${ext}`;
-    const {error:ue}=await sb.storage.from('fotos').upload(path,EMP_FOTO_FILE,{upsert:true});
-    if(ue){console.warn('Error subiendo foto:',ue.message);}
-    else{const {data:pu}=sb.storage.from('fotos').getPublicUrl(path);foto_url=pu.publicUrl;}
+  if(STAFF_FOTO_FILE&&U){
+    const ext=STAFF_FOTO_FILE.name.split('.').pop().toLowerCase();
+    const path=`staff/${S.slug}/${Date.now()}.${ext}`;
+    const {error:ue}=await sb.storage.from('fotos').upload(path,STAFF_FOTO_FILE,{upsert:true});
+    if(!ue){const {data:pu}=sb.storage.from('fotos').getPublicUrl(path);foto_url=pu.publicUrl;}
   }
-  // Intentar con foto_url primero, si falla la columna no existe, reintentar sin ella
-  let payload={peluqueria_slug:S.slug,nombre,color:col?.value||'#f59e0b',activo:true,horarios:{}};
+  const payload={peluqueria_slug:S.slug,nombre,color:col?.value||'#f59e0b',activo:true,horarios:{}};
   if(foto_url)payload.foto_url=foto_url;
-  let {data,error}=await sb.from('empleados').insert(payload).select().single();
-  // Si falla por foto_url o horarios, reintentar sin esas columnas
-  if(error&&(error.message.includes('foto_url')||error.message.includes('horarios'))){
-    const p2={peluqueria_slug:S.slug,nombre,color:col?.value||'#f59e0b',activo:true};
-    const r2=await sb.from('empleados').insert(p2).select().single();
-    data=r2.data;error=r2.error;
-  }
+  const {data,error}=await sb.from('empleados').insert(payload).select().single();
   if(btn){btn.disabled=false;btn.textContent='+ Agregar';}
   if(error){alert('Error: '+error.message);return;}
   if(data){
-    // Preservar foto_url aunque Supabase no la devuelva si la columna no existe
-    const empData={...data,horarios:data.horarios||{},foto_url:data.foto_url||foto_url||null};
-    EMPLEADOS.push(empData);
-    inp.value='';EMP_FOTO_FILE=null;
-    const av=document.getElementById('emp-avatar-prev');
-    if(av){av.innerHTML='+';av.style.background=col?.value||'#f59e0b';}
+    EMPLEADOS.push({...data,horarios:{},foto_url:foto_url||null});
+    inp.value='';STAFF_FOTO_FILE=null;
+    const p=document.getElementById('staff-foto-prev');
+    if(p){p.innerHTML='<span>+</span><div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.5);border-radius:6px;padding:2px 5px;font-size:10px;color:#fff">foto</div>';p.style.background='#f59e0b';}
+    document.getElementById('staff-color-inp').value='#f59e0b';
     renderEmpleados();
   }
 }
-async function deleteEmpleado(id){
-  if(!confirm('¿Eliminar este empleado?'))return;
-  await sb.from('empleados').update({activo:false}).eq('id',id);
-  EMPLEADOS=EMPLEADOS.filter(e=>e.id!==id);renderEmpleados();
+
+function abrirStaffModal(empId){
+  const emp=EMPLEADOS.find(e=>e.id===empId);if(!emp)return;
+  MODAL_EMP_ID=empId;
+  document.getElementById('modal-emp-id').value=empId;
+  document.getElementById('modal-titulo').textContent='✏️ '+emp.nombre;
+  document.getElementById('modal-nombre').value=emp.nombre;
+  document.getElementById('modal-color').value=emp.color||'#f59e0b';
+  // Foto
+  const fp=document.getElementById('modal-foto-prev');
+  const col=emp.color||'#f59e0b';
+  fp.style.background=col;
+  fp.innerHTML=emp.foto_url
+    ?`<img src="${emp.foto_url}?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover">`
+    :`<span style="color:${empContrast(col)}">${emp.nombre.charAt(0).toUpperCase()}</span>`;
+  // Horarios
+  const DS={0:'Dom',1:'Lun',2:'Mar',3:'Mié',4:'Jue',5:'Vie',6:'Sáb'};
+  const diasT=S.dias_trabajo||[1,2,3,4,5,6];
+  const HOPTS=[];for(let h=6;h<=22;h++)for(let m=0;m<60;m+=30)HOPTS.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+  const hor=emp.horarios||{};
+  document.getElementById('modal-horarios').innerHTML=diasT.length
+    ?diasT.map(d=>{
+      const h=hor[d]||{activo:true,desde:'09:00',hasta:'18:00'};
+      const activo=h.activo!==false;
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;min-width:52px">
+          <input type="checkbox" ${activo?'checked':''} style="accent-color:var(--accent)" onchange="setModalH(${d},'activo',this.checked)">
+          <span style="font-size:12px;font-weight:600">${DS[d]}</span>
+        </label>
+        <select class="fi" style="width:auto;padding:5px 8px;font-size:12px" ${!activo?'disabled':''} onchange="setModalH(${d},'desde',this.value)">
+          ${HOPTS.map(t=>`<option ${t===(h.desde||'09:00')?'selected':''}>${t}</option>`).join('')}
+        </select>
+        <span style="font-size:11px;color:var(--ink3)">→</span>
+        <select class="fi" style="width:auto;padding:5px 8px;font-size:12px" ${!activo?'disabled':''} onchange="setModalH(${d},'hasta',this.value)">
+          ${HOPTS.map(t=>`<option ${t===(h.hasta||'18:00')?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>`;
+    }).join('')
+    :'<p style="font-size:12px;color:var(--ink3)">Configurá días en Mi peluquería primero</p>';
+  document.getElementById('staff-modal').style.display='flex';
 }
+
+function setModalH(dia,campo,valor){
+  const emp=EMPLEADOS.find(e=>e.id===MODAL_EMP_ID);if(!emp)return;
+  if(!emp.horarios)emp.horarios={};
+  if(!emp.horarios[dia])emp.horarios[dia]={activo:true,desde:'09:00',hasta:'18:00'};
+  emp.horarios[dia][campo]=valor;
+  if(campo==='activo')abrirStaffModal(MODAL_EMP_ID);
+}
+
+async function cambiarFotoModal(inp){
+  const f=inp.files[0];if(!f||!MODAL_EMP_ID||!U)return;
+  const emp=EMPLEADOS.find(e=>e.id===MODAL_EMP_ID);if(!emp)return;
+  const fp=document.getElementById('modal-foto-prev');
+  // Preview inmediato
+  const reader=new FileReader();
+  reader.onload=ev=>{if(fp)fp.innerHTML=`<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover">`;};
+  reader.readAsDataURL(f);
+  // Subir
+  const ext=f.name.split('.').pop().toLowerCase();
+  const path=`staff/${S.slug}/${MODAL_EMP_ID}.${ext}`;
+  const {error:ue}=await sb.storage.from('fotos').upload(path,f,{upsert:true});
+  if(ue){alert('Error subiendo foto: '+ue.message);return;}
+  const {data:pu}=sb.storage.from('fotos').getPublicUrl(path);
+  const url=pu.publicUrl;
+  const {error:de}=await sb.from('empleados').update({foto_url:url}).eq('id',MODAL_EMP_ID);
+  if(de){alert('Error guardando: '+de.message);return;}
+  emp.foto_url=url;
+  if(fp)fp.innerHTML=`<img src="${url}?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover">`;
+}
+
+async function guardarStaffModal(){
+  const empId=MODAL_EMP_ID;
+  const emp=EMPLEADOS.find(e=>e.id===empId);if(!emp)return;
+  const nombre=document.getElementById('modal-nombre').value.trim();
+  const color=document.getElementById('modal-color').value;
+  if(!nombre){alert('El nombre no puede estar vacío');return;}
+  const {error}=await sb.from('empleados').update({nombre,color,horarios:emp.horarios||{}}).eq('id',empId);
+  if(error){alert('Error: '+error.message);return;}
+  emp.nombre=nombre;emp.color=color;
+  cerrarStaffModal();
+  renderEmpleados();
+}
+
+async function eliminarStaff(){
+  const empId=MODAL_EMP_ID;
+  if(!confirm('¿Eliminar este profesional?'))return;
+  await sb.from('empleados').update({activo:false}).eq('id',empId);
+  EMPLEADOS=EMPLEADOS.filter(e=>e.id!==empId);
+  cerrarStaffModal();renderEmpleados();
+}
+
+function cerrarStaffModal(){
+  document.getElementById('staff-modal').style.display='none';
+  MODAL_EMP_ID=null;
+}
+
 function renderEmpPillsC(){
   const sec=document.getElementById('cl-emp-section');
   const g=document.getElementById('cl-emp-grid');
@@ -1677,18 +1738,15 @@ function renderEmpPillsC(){
   g.innerHTML=pills.map(e=>{
     const col=e.color||'#9a9794';
     const av=e.foto_url
-      ?`<img src="${e.foto_url}?t=${Date.now()}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+      ?`<img src="${e.foto_url}?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
       :`<span style="color:${empContrast(col)};font-weight:700;font-size:12px">${e.nombre.charAt(0).toUpperCase()}</span>`;
     return `<div class="emp-pill ${CL_EMPLEADO===e.id?'sel':''}" onclick="selEmpleado('${e.id}')">
-      <div style="width:26px;height:26px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${av}</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${av}</div>
       ${e.nombre}
     </div>`;
   }).join('');
 }
-function selEmpleado(id){
-  CL_EMPLEADO=id==='null'?null:id;
-  renderEmpPillsC();
-}
+function selEmpleado(id){CL_EMPLEADO=id==='null'?null:id;renderEmpPillsC();}
 
 // ═══ CLIENTES ═══
 let CLIENTES_TODOS=[];
