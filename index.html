@@ -1553,8 +1553,10 @@ function renderEmpleados(){
       </div>
       <!-- Editar foto -->
       <div style="margin-bottom:10px">
+        <label for="foto-inp-${e.id}" class="btn btn-g btn-sm" style="width:auto;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+          📷 ${e.foto_url?'Cambiar foto':'Agregar foto'}
+        </label>
         <input type="file" id="foto-inp-${e.id}" accept="image/*" style="display:none" onchange="cambiarFotoEmp('${e.id}',this)">
-        <button class="btn btn-g btn-sm" style="width:auto" onclick="document.getElementById('foto-inp-${e.id}').click()">📷 ${e.foto_url?'Cambiar foto':'Agregar foto'}</button>
       </div>
       <div style="background:var(--bg2);border-radius:var(--r);padding:10px">
         <div style="font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;margin-bottom:8px">Horarios</div>
@@ -1576,39 +1578,41 @@ async function cambiarFotoEmp(empId,inp){
   const f=inp.files[0];if(!f)return;
   const emp=EMPLEADOS.find(e=>e.id===empId);if(!emp)return;
   if(!U){alert('No hay sesión activa');return;}
-  // Mostrar preview inmediato antes de subir
+  // Mostrar preview inmediato
   const reader=new FileReader();
   reader.onload=ev=>{
-    const avatar=document.querySelector(`#avatar-${empId}`);
+    const avatar=document.getElementById('avatar-'+empId);
     if(avatar)avatar.innerHTML=`<img src="${ev.target.result}" alt="" style="width:100%;height:100%;object-fit:cover">`;
   };
   reader.readAsDataURL(f);
-  const btn=inp.previousElementSibling;
-  if(btn){btn.textContent='Subiendo...';btn.disabled=true;}
-  // Usar nombre fijo por empleado para sobreescribir siempre la misma foto
+  // Cambiar texto del label
+  const lbl=document.querySelector(`label[for="foto-inp-${empId}"]`);
+  if(lbl)lbl.textContent='Subiendo...';
+  // Subir a Storage con ruta fija por empleado
   const ext=f.name.split('.').pop().toLowerCase().replace('jpeg','jpg');
   const path=`empleados/${empId}/foto.${ext}`;
   const {error:ue}=await sb.storage.from('fotos').upload(path,f,{upsert:true,cacheControl:'0'});
   if(ue){
     alert('Error subiendo foto: '+ue.message);
-    if(btn){btn.disabled=false;btn.textContent='📷 '+(emp.foto_url?'Cambiar foto':'Agregar foto');}
+    if(lbl)lbl.textContent='📷 Agregar foto';
     return;
   }
   const {data:pu}=sb.storage.from('fotos').getPublicUrl(path);
-  // Agregar timestamp para evitar cache del browser
-  const fotoUrl=pu.publicUrl+'?t='+Date.now();
-  const {error:de}=await sb.from('empleados').update({foto_url:pu.publicUrl}).eq('id',empId);
+  const urlBase=pu.publicUrl;
+  // Guardar URL en Supabase
+  const {error:de}=await sb.from('empleados').update({foto_url:urlBase}).eq('id',empId);
   if(de){
-    alert('Error guardando en base de datos: '+de.message);
-    if(btn){btn.disabled=false;btn.textContent='📷 '+(emp.foto_url?'Cambiar foto':'Agregar foto');}
+    alert('Error guardando: '+de.message);
+    if(lbl)lbl.textContent='📷 Agregar foto';
     return;
   }
-  emp.foto_url=pu.publicUrl;
-  if(btn){btn.disabled=false;btn.textContent='📷 Cambiar foto';}
-  // Actualizar solo el avatar sin re-renderizar todo
-  const avatar=document.querySelector(`#avatar-${empId}`);
-  if(avatar)avatar.innerHTML=`<img src="${fotoUrl}" alt="" style="width:100%;height:100%;object-fit:cover">`;
-  alert('✓ Foto guardada correctamente');
+  // Actualizar objeto en memoria
+  emp.foto_url=urlBase;
+  // Actualizar avatar con cache-bust
+  const avatar=document.getElementById('avatar-'+empId);
+  if(avatar)avatar.innerHTML=`<img src="${urlBase}?t=${Date.now()}" alt="" style="width:100%;height:100%;object-fit:cover">`;
+  if(lbl)lbl.textContent='📷 Cambiar foto';
+  alert('✓ Foto guardada');
 }
 async function saveEH(empId,btn){
   const emp=EMPLEADOS.find(e=>e.id===empId);if(!emp)return;
@@ -1673,7 +1677,7 @@ function renderEmpPillsC(){
   g.innerHTML=pills.map(e=>{
     const col=e.color||'#9a9794';
     const av=e.foto_url
-      ?`<img src="${e.foto_url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+      ?`<img src="${e.foto_url}?t=${Date.now()}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
       :`<span style="color:${empContrast(col)};font-weight:700;font-size:12px">${e.nombre.charAt(0).toUpperCase()}</span>`;
     return `<div class="emp-pill ${CL_EMPLEADO===e.id?'sel':''}" onclick="selEmpleado('${e.id}')">
       <div style="width:26px;height:26px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${av}</div>
